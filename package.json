@@ -1,10 +1,9 @@
 {
   "name": "api-atlas",
   "version": "0.0.1",
-  "description": "An api mapper to use across all js enviroments",
-  "main": "index.js",
+  "description": "An easy to use api mapper",
+  "main": "./lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "babel src -d lib"
   },
   "keywords": [
