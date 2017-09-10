@@ -1,9 +1,9 @@
 import AtlasClient from './atlas-client';
-import Atlas from './atlas';
+import AtlasMap from './atlas-map';
 import { FetchNetworkInterface } from './network-interfaces';
 
 export {
   AtlasClient,
-  Atlas,
+  AtlasMap,
   FetchNetworkInterface,
 };
