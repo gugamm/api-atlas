@@ -58,6 +58,11 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
         atlasRequestState[cacheId].lastResponse = response;
         atlasRequestState[cacheId].fetchPromise = Promise.resolve(response);
         return response;      
+      })
+      .catch(err => {
+        atlasRequestState[cacheId].lastResponse = err;
+        atlasRequestState[cacheId].fetchPromise = Promise.reject(err);
+        return Promise.reject(err);
       });
 
       atlasRequestState[cacheId] = {
