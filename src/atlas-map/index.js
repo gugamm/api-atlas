@@ -1,1 +1,1 @@
-export { default } from './atlas';
+export { default } from './atlas-map';
