@@ -40,6 +40,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
     return getIdFromRequest(request.fetchUrl, request.fetchOptions);
   }
 
+  // options: fetch options + (params, cache)
   const fetch = (atlasRequestDescription, options = {}) => {
     const { fetchUrl, fetchOptions, cache } = buildRequest(atlasRequestDescription, options);
     const cacheId = getIdFromRequest(fetchUrl, fetchOptions);
