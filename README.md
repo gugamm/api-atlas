@@ -55,6 +55,7 @@ const apiConfig = {
 ```
 
 **Note**: fetchOptions are options supported by the fetch api. For more information access [fetch](https://github.com/github/fetch)
+
 **Note 2**: You can provide options at resource and root level. You could for example turn off cache for the entire api, or  just for a resource, however, inner options override outer options.
 
 ### Step 2
@@ -89,6 +90,7 @@ networkInterface.setBeforeRequestListener(
 ```
 
 **note** There is no need to pass a responseParser. The network interface uses a json parser by default.
+
 **note 2** You can use setBeforeRequestListener as a middleware to modify and log data about the request. Here you could set headers like authorization by returning new options. (see example below)
 
 ```js
@@ -127,6 +129,7 @@ const client = AtlasClient({
 ```
 
 **note** You must pass a networkInterface
+
 **note 2** getIdFromRequest is an optional function used by the cache handler to get an unique id for a request. This way it can look into the cache to see if there is a cached response there. This parameter is optional, but you can override to provide a better implementation. The default one uses the function above (id = url).
 
 ### Step 5
@@ -145,7 +148,7 @@ const fetchOptions = { params: { username: 'gugamm' } }; //You can pass options
 client.fetch(fetchDefinition, fetchOptions).then(repos => console.log(repos)); //yay!!
 ```
 
-### More topics (comming soon)
+### More topics (coming soon)
 
 * ApiClient docs (updating cache after mutating and clearing cache)
 
