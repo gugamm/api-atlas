@@ -84,7 +84,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
   const updateCache = (cacheId, updater) => {
     return new Promise(resolve => {
       const cacheData = atlasRequestState[cacheId];
-      Promise.resolve(updater(cacheData))
+      Promise.resolve(updater(cacheData.lastResponse))
       .then(
         newCacheData => {
           atlasRequestState[cacheId].lastResponse = newCacheData;
