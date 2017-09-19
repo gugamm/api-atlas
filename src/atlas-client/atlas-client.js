@@ -87,11 +87,10 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
       Promise.resolve(updater(cacheData))
       .then(
         newCacheData => {
-          const newRefCacheData = {...newCacheData};
-          atlasRequestState[cacheId].lastResponse = newRefCacheData;
-          atlasRequestState[cacheId].fetchPromise = Promise.resolve(newRefCacheData);
-          nextCache(cacheId, newRefCacheData);
-          resolve(newRefCacheData);
+          atlasRequestState[cacheId].lastResponse = newCacheData;
+          atlasRequestState[cacheId].fetchPromise = Promise.resolve(newCacheData);
+          nextCache(cacheId, newCacheData);
+          resolve(newCacheData);
         }
       );
     });
