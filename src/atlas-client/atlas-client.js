@@ -11,6 +11,7 @@ const AtlasRequestState = () => {
 const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
   getIdFromRequest = getIdFromRequest || ((fetchUrl) => fetchUrl);
   const atlasRequestState = AtlasRequestState();
+  const cacheListeners = {};
   
   const buildRequest = (atlasRequestDescription, options = {}) => {
     const params = {
@@ -58,11 +59,13 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
       .then(response => {
         atlasRequestState[cacheId].lastResponse = response;
         atlasRequestState[cacheId].fetchPromise = Promise.resolve(response);
+        nextCache(cacheId, response);
         return response;      
       })
       .catch(err => {
         atlasRequestState[cacheId].lastResponse = err;
         atlasRequestState[cacheId].fetchPromise = Promise.reject(err);
+        nextCache(cacheId, err);
         return Promise.reject(err);
       });
 
@@ -75,6 +78,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
 
   const clearCache = (cacheId) => {
     delete atlasRequestState[cacheId];
+    nextCache(cacheId, null);
   };
 
   const updateCache = (cacheId, updater) => {
@@ -86,10 +90,33 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
           const newRefCacheData = {...newCacheData};
           atlasRequestState[cacheId].lastResponse = newRefCacheData;
           atlasRequestState[cacheId].fetchPromise = Promise.resolve(newRefCacheData);
+          nextCache(cacheId, newRefCacheData);
           resolve(newRefCacheData);
         }
       );
     });
+  };
+
+  const nextCache = (cacheId, value) => {
+    if (cacheListeners[cacheId]) {
+      cacheListeners[cacheId].forEach(
+        cacheListener => cacheListener(value),
+      );
+    }
+  }
+
+  const subscribeForCache = (cacheId, listener) {
+    if (!cacheListeners[cacheId]) {
+      cacheListeners[cacheId] = [];
+    }
+
+    cacheListeners[cacheId] = [...cacheListeners[cacheId], listener];
+    
+    return () => {
+      cacheListeners[cacheId] = cacheListeners[cacheId].filter(
+        l => l !== listener,
+      );
+    }
   }
 
   return {
@@ -97,6 +124,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
     clearCache: clearCache,
     getCacheId: getCacheId,
     updateCache: updateCache,
+    subscribeForCache: subscribeForCache,
   };
 }
 
