@@ -105,7 +105,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
     }
   }
 
-  const subscribeForCache = (cacheId, listener) {
+  const subscribeForCache = (cacheId, listener) => {
     if (!cacheListeners[cacheId]) {
       cacheListeners[cacheId] = [];
     }
@@ -116,7 +116,7 @@ const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
       cacheListeners[cacheId] = cacheListeners[cacheId].filter(
         l => l !== listener,
       );
-    }
+    };
   }
 
   return {
