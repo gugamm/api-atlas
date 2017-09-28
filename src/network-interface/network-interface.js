@@ -1,42 +1,20 @@
-const createNetworkInterface = ({ responseParser } = {}) => {
-  const defaultParser = response => response.json();
-  const parseResponse = responseParser || defaultParser;
+import { buildAtlasResponse } from '../atlas-client';
 
-  let beforeRequestListener;
-
-  const handleBeforeRequestListener = (oldUrl, oldOptions) => {
-    return new Promise(resolve => {
-      if (beforeRequestListener) {
-        beforeRequestListener(oldUrl, oldOptions).then(
-          ({ url = oldUrl, options = oldOptions } = {}) => {
-            resolve({
-              url,
-              options: {
-                ...oldOptions,
-                ...options,
-              },
-            });
-          },
-        );
-      } else {
-        resolve({
-          url: oldUrl,
-          options: oldOptions
-        });
+const defaultFetcher = ({ url, fetchOptions }) => {
+  return fetch(url, fetchOptions)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(response.statusText);
       }
-    });
-  }
+      return response;
+    })
+    .then(response => response.json())
+    .then(parsedResponse => buildAtlasResponse({ data: parsedResponse }))
+    .catch(error => buildAtlasResponse({ ok: false, error }));
+};
 
-  return {
-    fetch(url, options) {
-      return handleBeforeRequestListener(url, options)
-      .then(({ url, options }) => fetch(url,options))
-      .then(parseResponse);
-    },
-    setBeforeRequestListener(listener) {
-      beforeRequestListener = listener;
-    },
-  };
-}
+const createNetworkInterface = ({ fetcher = defaultFetcher } = {}) => ({
+  fetcher,
+});
 
 export default createNetworkInterface;

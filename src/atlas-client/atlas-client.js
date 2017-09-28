@@ -1,130 +1,96 @@
-import buildPlainUrl from '../utils/build-plain-url';
-import omit from '../utils/omit';
+import AtlasRequest from './atlas-request';
+import AtlasRequestHandler from './atlas-request-handler';
 
-const AtlasRequestState = () => {
-  const state = {};
+const defBuildRequestId = ({ url }) => url;
 
-  return state;
-}
-
-
-const AtlasClient = ({ networkInterface, getIdFromRequest }) => {
-  getIdFromRequest = getIdFromRequest || ((fetchUrl) => fetchUrl);
-  const atlasRequestState = AtlasRequestState();
-  const cacheListeners = {};
-  
-  const buildRequest = (atlasRequestDescription, options = {}) => {
-    const params = {
-      ...atlasRequestDescription.options.params,
-      ...options.params,
-    };
-
-    const fetchUrl = buildPlainUrl(atlasRequestDescription.url, params);
-    const fetchOptions = {
-      ...atlasRequestDescription.options,
-      ...options,
-    };
-
-    const cache = (fetchOptions.cache === undefined || fetchOptions.cache === null) ? 
-                  true : 
-                  fetchOptions.cache;
-
-    return {
-      fetchUrl,
-      fetchOptions: omit(['cache', 'params'], fetchOptions),
-      cache,
-    };
+class AtlasClient {
+  constructor({ networkInterface, buildRequestId = defBuildRequestId }) {
+    this.networkInterface = networkInterface;
+    this.buildRequestId = buildRequestId;
+    this.requestsState = {};
+    this.requestsHandlersInFlight = {};
+    this.requestStateListeners = {};
   }
 
-  const getCacheId = (atlasRequestDescription, options = {}) => {
-    const request = buildRequest(atlasRequestDescription, options);
-    return getIdFromRequest(request.fetchUrl, request.fetchOptions);
-  }
-
-  // options: fetch options + (params, cache)
-  const fetch = (atlasRequestDescription, options = {}) => {
-    const { fetchUrl, fetchOptions, cache } = buildRequest(atlasRequestDescription, options);
-    const cacheId = getIdFromRequest(fetchUrl, fetchOptions);
-
-    if (cache) {
-      // Check cache
-      if (atlasRequestState[cacheId]) {
-        return atlasRequestState[cacheId].fetchPromise;
-      }
-    }
-
-    // Create element on cache
-    const fetchPromise = 
-      networkInterface.fetch(fetchUrl, fetchOptions)
-      .then(response => {
-        atlasRequestState[cacheId].lastResponse = response;
-        atlasRequestState[cacheId].fetchPromise = Promise.resolve(response);
-        nextCache(cacheId, response);
-        return response;      
-      })
-      .catch(err => {
-        atlasRequestState[cacheId].lastResponse = err;
-        atlasRequestState[cacheId].fetchPromise = Promise.reject(err);
-        nextCache(cacheId, err);
-        return Promise.reject(err);
-      });
-
-      atlasRequestState[cacheId] = {
-        fetchPromise,
+  getRequestState(requestId) {
+    if (!this.requestsState[requestId]) {
+      this.requestsState[requestId] = {
+        loading: false,
+        error: null,
+        data: null,
       };
-
-      return fetchPromise;
-  };
-
-  const clearCache = (cacheId) => {
-    delete atlasRequestState[cacheId];
-    nextCache(cacheId, null);
-  };
-
-  const updateCache = (cacheId, updater) => {
-    return new Promise(resolve => {
-      const cacheData = atlasRequestState[cacheId];
-      Promise.resolve(updater(cacheData.lastResponse))
-      .then(
-        newCacheData => {
-          atlasRequestState[cacheId].lastResponse = newCacheData;
-          atlasRequestState[cacheId].fetchPromise = Promise.resolve(newCacheData);
-          nextCache(cacheId, newCacheData);
-          resolve(newCacheData);
-        }
-      );
-    });
-  };
-
-  const nextCache = (cacheId, value) => {
-    if (cacheListeners[cacheId]) {
-      cacheListeners[cacheId].forEach(
-        cacheListener => cacheListener(value),
-      );
     }
+    return this.requestsState[requestId];
   }
 
-  const subscribeForCache = (cacheId, listener) => {
-    if (!cacheListeners[cacheId]) {
-      cacheListeners[cacheId] = [];
+  setRequestState(requestId, state) {
+    const defaultState = { loading: false, error: null, data: null };
+    this.requestsState[requestId] = { ...defaultState, ...state };
+    const requestStateListeners = this.getRequestStateListeners(requestId);
+    requestStateListeners.forEach(
+      listener => listener(this.requestsState[requestId]),
+    );
+  }
+
+  // returns a promise that resolves to an AtlasResponse
+  fetch(atlasRequestDescription, atlasOptions) {
+    // Build the request id
+    const atlasRequest = new AtlasRequest(atlasRequestDescription, atlasOptions);
+    const requestId = this.buildRequestId(atlasRequest);
+    const requestState = this.getRequestState(requestId);
+
+    // Check if request in flight
+    const handlerInFlight = this.requestsHandlersInFlight[requestId];
+    if (handlerInFlight) {
+      return new Promise(resolve => handlerInFlight.subscribe(resolve));
     }
 
-    cacheListeners[cacheId] = [...cacheListeners[cacheId], listener];
-    
+    // Check if value in cache
+    if (requestState.data) {
+      return Promise.resolve(requestState.data);
+    }
+
+    // register first handler
+    const requestHandler = new AtlasRequestHandler(atlasRequest, this.networkInterface);
+    this.requestsHandlersInFlight[requestId] = requestHandler;
+
+    // first subscribe to handler
+    return new Promise(resolve => {
+      requestHandler.subscribe(atlasResponse => {
+        this.requestsHandlersInFlight[requestId] = null;
+        if (atlasResponse.ok) {
+          this.setRequestState(requestId, {
+            data: atlasResponse.data,
+          });
+        } else {
+          this.setRequestState(requestId, {
+            error: atlasResponse.error,
+          });
+        }
+        resolve(atlasResponse);
+      });
+    });
+  }
+
+  getRequestStateListeners(requestId) {
+    if (!this.requestStateListeners[requestId]) {
+      this.requestStateListeners[requestId] = [];
+    }
+    return this.requestStateListeners[requestId];
+  }
+
+  subscribeForRequestState(requestId, listener) {
+    const listeners = this.getRequestStateListeners(requestId);
+    this.requestStateListeners[requestId] = [...listeners, listener];
     return () => {
-      cacheListeners[cacheId] = cacheListeners[cacheId].filter(
-        l => l !== listener,
-      );
+      this.requestStateListeners[requestId] = this.getRequestStateListeners(requestId).filter(l => l !== listener);
     };
   }
 
-  return {
-    fetch: fetch,
-    clearCache: clearCache,
-    getCacheId: getCacheId,
-    updateCache: updateCache,
-    subscribeForCache: subscribeForCache,
-  };
+  updateRequestState(requestId, updater) {
+    const requestState = this.getRequestState(requestId);
+    this.setRequestState(requestId, updater(requestState));
+  }
 }
 
 export default AtlasClient;

@@ -1,30 +1,23 @@
-/***********
- *  UTILS  *
- ***********/
-
 const mergePaths = (root = 'http://localhost', resource = '/', endPoint = '/') => {
   return `${root}${resource}${endPoint}`;
-}
+};
 
-const mergeOptions = (root = {}, resource = {}, endPoint = {}) => {
-  return {
-    ...root,
-    ...resource,
-    ...endPoint,
-  };
-}
+// config = { params, fetchOptions, path }
+const mergeOptions = (rootConfig = {}, resourceConfig = {}, endPointConfig = {}) => {
+  const mergedConfigs = { ...rootConfig, ...resourceConfig, ...endPointConfig };
+  const mergedFetchOptions = { ...rootConfig.fetchOptions, ...resourceConfig.fetchOptions, ...endPointConfig.fetchOptions };
+  const mergedParams = { ...rootConfig.params, ...resourceConfig.params, ...endPointConfig.params };
+  mergedConfigs.fetchOptions = mergedFetchOptions;
+  mergedConfigs.params = mergedParams;
+  return mergedConfigs;
+};
 
 const buildAtlasRequestDescription = (rootConfig, resourceConfig, endPointConfig) => {
   const description = {};
   description.url = mergePaths(rootConfig.host, resourceConfig.path, endPointConfig.path);
-  description.options = mergeOptions(rootConfig.options, resourceConfig.options, endPointConfig.options);
+  description.atlasOptions = mergeOptions(rootConfig, resourceConfig, endPointConfig);
   return description;
-}
-
-
-/***********
- *  ATLAS  *
- ***********/
+};
 
 const AtlasMap = (targetConfig) => {
   const atlasMap = {};
@@ -37,7 +30,7 @@ const AtlasMap = (targetConfig) => {
   );
 
   return atlasMap;
-}
+};
 
 const AtlasResource = (rootConfig, resourceConfig) => {
   const atlasResource = {};
@@ -50,11 +43,11 @@ const AtlasResource = (rootConfig, resourceConfig) => {
   );
 
   return atlasResource;
-}
+};
 
 const AtlasEndPoint = (rootConfig, resourceConfig, endPointConfig) => {
   const atlasEndPoint = () => buildAtlasRequestDescription(rootConfig, resourceConfig, endPointConfig);
   return atlasEndPoint;
-}
+};
 
 export default AtlasMap;
