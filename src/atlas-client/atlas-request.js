@@ -47,6 +47,9 @@ class AtlasRequest {
 
   /* Http layer handler functions */
     doFetch() {
+      const cache = this.atlasOptions.cache;
+
+      // if state is crystalline then first request
       if (!this.state.data && !this.state.error && !this.state.loading) {
         this.setState({ loading: true });
         return new Promise(resolve => {
@@ -61,19 +64,32 @@ class AtlasRequest {
           });
         });
       }
-      return new Promise(resolve => this.fetchHandler.subscribe(resolve));
+
+      // batching
+      if (this.state.loading) {
+        return new Promise(resolve => this.fetchHandler.subscribe(resolve));
+      }
+
+      // caching
+      if (cache) {
+        return Promise.resolve(this.fetchHandler.lastResponse);
+      }
+
+      // no caching
+      return this.refetch();
     }
 
     refetch() {
       // clear cache
       this.fetchHandler.resetCache();
       this.setState({ loading: true });
-      this.fetchHandler.doFetch().then(atlasResponse => {
+      return this.fetchHandler.doFetch().then(atlasResponse => {
         if (atlasResponse.ok) {
           this.setState({ data: atlasResponse.data });
         } else {
           this.setState({ error: atlasResponse.error });
         }
+        return atlasResponse;
       });
     }
 };

@@ -26,6 +26,7 @@ class AtlasRequestHandler {
   resetCache() {
     this.fetchComplete = false;
     this.lastResponse = null;
+    this.listeners = [];
   }
 
   subscribe(listener) {
