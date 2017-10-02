@@ -19,18 +19,30 @@ class AtlasRequest {
     }
 
     setState(newState) {
-      const defaultState = {
-        loading: false,
-        data: null,
-        error: null,
-      };
-      this.state = {
-        ...defaultState,
-        ...newState
-      };
-      this.listeners.forEach(listener => {
-        listener(this.state);
-      });
+      const shouldSetState = Object.getOwnPropertyNames(newState).reduce((acc, key) => {
+        if (acc) {
+          return true;
+        }
+        if (newState[key] !== this.state[key]) {
+          return true;
+        }
+        return false;
+      }, false);
+
+      if (shouldSetState) {
+        const defaultState = {
+          loading: false,
+          data: null,
+          error: null,
+        };
+        this.state = {
+          ...defaultState,
+          ...newState
+        };
+        this.listeners.forEach(listener => {
+          listener(this.state);
+        });
+      }
     }
 
     subscribeForState(listener) {
@@ -46,6 +58,8 @@ class AtlasRequest {
     }
 
   /* Http layer handler functions */
+
+    // subscribe to current fetcher or start a new request if none (use subscribe)
     doFetch() {
       const cache = this.atlasOptions.cache;
 
@@ -59,8 +73,8 @@ class AtlasRequest {
             } else {
               this.setState({ error: atlasResponse.error });
             }
-            resolve(atlasResponse);
             unsubscribe();
+            resolve(atlasResponse);
           });
         });
       }
@@ -79,9 +93,8 @@ class AtlasRequest {
       return this.refetch();
     }
 
+    // force a new request (use doFetch)
     refetch() {
-      // clear cache
-      this.fetchHandler.resetCache();
       this.setState({ loading: true });
       return this.fetchHandler.doFetch().then(atlasResponse => {
         if (atlasResponse.ok) {
