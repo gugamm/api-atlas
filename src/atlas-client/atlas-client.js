@@ -11,7 +11,7 @@ class AtlasClient {
     this.requests = {};
   }
 
-  buildRequest({ url, atlasOptions: desAtlasOptions }, atlasOptions = {}) {
+  buildRequest({ url, atlasOptions: desAtlasOptions = {} }, atlasOptions = {}) {
     const mergedOptions = mergeAtlasOptions(desAtlasOptions, atlasOptions);
     const plainUrl = buildPlainUrl(url, mergedOptions.params);
     const cache = mergedOptions.cache;
